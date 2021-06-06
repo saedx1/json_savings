@@ -119,7 +119,7 @@ def main():
             st.error(ERROR_STR)
             return
 
-        json_bytes = json.dumps(json_str).encode("utf-8")
+        json_bytes = json_str.encode("utf-8")
         json_minified = minify_json(json_obj)
 
         encoded_data = {}
@@ -144,9 +144,12 @@ def main():
             md_str += "\n"
 
         saving_percent = (100 - maxi[2]) / 100
-        st.success(
-            f"you could save ** ${saving_percent * money:0.2f} ({saving_percent*100:0.2f}%)** with **{maxi[0]}** encoding and **{maxi[1]}** compression!"
-        )
+        if saving_percent != 0:
+            st.success(
+                f"you could save ** ${saving_percent * money:0.2f} ({saving_percent*100:0.2f}%)** with **{maxi[0]}** encoding and **{maxi[1]}** compression!"
+            )
+        else:
+            st.error("unfortunately, none of these algorithm can bring your bandwidth down, your json in already at its lowest!")
 
         st.write(
             f"""|json|size|
