@@ -1,86 +1,19 @@
 import json
-import msgpack
-import cbor2
-import zstd
-import snappy
-import brotli
-import codecs
+
 import streamlit as st
 
+import logic
 
-def minify_json(content, output_path=None):
-    res = json.dumps(content, separators=(",", ":"))
-    if output_path:
-        open(output_path, "w").write(res)
-    else:
-        return res.encode("utf-8")
+JSON_ERROR_STR = "invalid json"
 
-
-def encode_payload(content, alg, output_path=None):
-    if alg == "msgpack":
-        res = msgpack.dumps(content, use_bin_type=True)
-    elif alg == "cbor":
-        res = cbor2.dumps(content)
-
-    if output_path:
-        open(output_path, "wb").write(res)
-    else:
-        return res
-
-
-def compress_payload(content, alg, output_path=None):
-    if alg == "zstd":
-        res = zstd.compress(content)
-    elif alg == "brotli":
-        res = brotli.compress(content)
-    elif alg == "gz":
-        res = codecs.encode(content, "zlib")
-    elif alg == "snappy":
-
-        res = snappy.compress(content)
-
-    if output_path:
-        open(output_path, "wb").write(res)
-    else:
-        return res
-
-
-def encode_with_all(content):
-    data = {}
-    sizes = {}
-
-    res = encode_payload(content, "msgpack")
-    data["msgpack"] = res
-    sizes["msgpack"] = len(res)
-
-    res = encode_payload(content, "cbor")
-    data["cbor"] = res
-    sizes["cbor"] = len(res)
-
-    return data, sizes
-
-
-def compress_with_all(content):
-    data = {}
-    sizes = {}
-
-    res = compress_payload(content, "zstd")
-    data["zstd"] = res
-    sizes["zstd"] = len(res)
-
-    res = compress_payload(content, "brotli")
-    data["brotli"] = res
-    sizes["brotli"] = len(res)
-
-    res = compress_payload(content, "snappy")
-    data["snappy"] = res
-    sizes["snappy"] = len(res)
-
-    res = compress_payload(content, "gz")
-    data["gz"] = res
-    sizes["gz"] = len(res)
-
-    return data, sizes
+DEFAULT_JSON = """{
+  "Name": "Saed",
+  "Courses": ["Data Structures", "Algorithm Design and Analysis"],
+  "PreviousCourses": [
+    { "Name": "Intro to Programming", "Grade": 90 },
+    { "Name": "Discrete Math", "Grade": 85 }
+  ]
+}"""
 
 
 def init_config():
@@ -89,9 +22,6 @@ def init_config():
         layout="wide",
         initial_sidebar_state="auto",
     )
-
-
-def hide_menu_footer():
     hide_streamlit_style = """
             <style>
             #MainMenu {visibility: hidden;}
@@ -101,45 +31,84 @@ def hide_menu_footer():
     st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 
+def create_checkbox_group(label, members, sidebar=False):
+    input_label(label, sidebar)
+    return {i: checkbox(i, sidebar) for i in members}
+
+
+def checkbox(text, sidebar=True):
+    if sidebar:
+        return st.sidebar.checkbox(text)
+
+    return st.checkbox(text)
+
+
+def input_label(text, sidebar=True):
+    if sidebar:
+        return st.sidebar.subheader(text)
+
+    return st.subheader(text)
+
+
+def html_center(str):
+    return "<center>\n\n" + str + "\n\n</center>"
+
+
 def main():
+
     init_config()
-    hide_menu_footer()
 
-    st.title("json encoding and compression")
+    st.sidebar.title("Inputs")
+    st.title("JSON Savings!")
 
-    json_str = st.sidebar.text_area(
-        "json",
-        "{}",
-        350,
-    )
+    input_label("JSON Payload")
+    json_str = st.sidebar.text_area("", DEFAULT_JSON)
 
-    money = st.sidebar.number_input("bandwidth spending ($)", 0, value=1000)
+    col1, col2 = st.sidebar.beta_columns(2)
+    with col1:
+        comp_inputs = create_checkbox_group("Compression", logic.get_compressions())
+    with col2:
+        enc_inputs = create_checkbox_group("Serialization", logic.get_serializations())
 
-    if st.sidebar.button("calculate savings"):
+    selected_encs = [k for k, v in enc_inputs.items() if v]
+    selected_comps = [k for k, v in comp_inputs.items() if v]
+
+    input_label("GB Price ($)")
+    price = st.sidebar.number_input("", 0.0, value=0.09, key="gbp")
+
+    input_label("Number of Users")
+    n_users = st.sidebar.number_input("", 1, value=100, key="nu")
+
+    input_label("User Requests per Minute")
+    req_user = st.sidebar.number_input("", 1, value=100, key="nrm")
+
+    # if st.sidebar.button("Calculate"):
+    if st.sidebar.button("Calculate"):
+        if len(selected_comps) == 0:
+            st.error("Please select at least one compression techinque!")
+            return
+
         try:
-            ERROR_STR = "invalid or empty json!"
             json_obj = json.loads(json_str)
             if len(json_obj) == 0:
-                st.error(ERROR_STR)
                 return
         except:
-            st.error(ERROR_STR)
+            st.error(JSON_ERROR_STR)
             return
 
         json_bytes = json_str.encode("utf-8")
-        json_minified = minify_json(json_obj)
 
         encoded_data = {}
         encoded_data["original"] = json_bytes
-        encoded_data["minified"] = json_minified
-        encoded_data2, _ = encode_with_all(json_obj)
+        encoded_data2, _ = logic.encode(json_obj, selected_encs)
         encoded_data.update(encoded_data2)
 
-        md_str = "||zstd|brotli|snappy|gz|\n"
-        md_str += "|-----|-----|-----|-----|-----|\n"
+        md_str = f"||{'|'.join(selected_comps)}|\n"
+        md_str += f"|{'|'.join('-----'* (len(selected_comps)+1))}|\n"
+
         maxi = ("no", None, 100)
         for j in encoded_data:
-            _, compressed_sizes = compress_with_all(encoded_data[j])
+            _, compressed_sizes = logic.compress(encoded_data[j], selected_comps)
             md_str += f"|**{j}**|"
 
             for i in compressed_sizes:
@@ -151,24 +120,40 @@ def main():
             md_str += "\n"
 
         saving_percent = (100 - maxi[2]) / 100
+
+        st.markdown(
+            html_center(f"## Original JSON Size: **{len(json_bytes)} bytes**"),
+            unsafe_allow_html=True,
+        )
+        st.write(f"\n\n")
+
+        md_str = html_center(md_str)
+        st.markdown(md_str, unsafe_allow_html=True)
+        st.write(f"\n\n")
+
+        total_price = (
+            n_users
+            * req_user
+            * 30  # days
+            * 24  # hours
+            * 60  # minutes
+            / 1024  # kilobytes
+            / 1024  # megabytes
+            / 1024  # gigabytes
+            * price
+            * len(json_bytes)
+        )
+
+        st.info(f"Currently, your total monthly bill is ${total_price:0.3f}")
+
         if saving_percent != 0:
             st.success(
-                f"you could save ** ${saving_percent * money:0.2f} ({saving_percent*100:0.2f}%)** with **{maxi[0]}** encoding and **{maxi[1]}** compression!"
+                f"You could save ** ${saving_percent * total_price:0.3f} ({saving_percent*100:0.2f}%)** with **{maxi[0]}** encoding and **{maxi[1]}** compression! Your bill could become **${total_price*(1-saving_percent):0.3f}**."
             )
         else:
             st.error(
-                "unfortunately, none of these algorithm can bring your bandwidth down, your json in already at its lowest!"
+                "Unfortunately, using any of those techniques will result in a bigger JSON!"
             )
-
-        st.write(
-            f"""|json|size|
-        |----|----|
-        |**original**|{len(json_bytes)} bytes - **100.00%**|
-        |**minified**|{len(json_minified)} bytes - **{len(json_minified) * 100 / len(json_bytes):0.2f}%**|
-        """
-        )
-        st.write(f"\n\n")
-        st.markdown(md_str)
 
 
 if __name__ == "__main__":
