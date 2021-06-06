@@ -7,8 +7,6 @@ import brotli
 import codecs
 import streamlit as st
 
-st.set_page_config(layout="wide")
-
 
 def minify_json(content, output_path=None):
     res = json.dumps(content, separators=(",", ":"))
@@ -85,6 +83,14 @@ def compress_with_all(content):
     return data, sizes
 
 
+def init_config():
+    st.set_page_config(
+        page_title="JSON Savings",
+        layout="wide",
+        initial_sidebar_state="auto",
+    )
+
+
 def hide_menu_footer():
     hide_streamlit_style = """
             <style>
@@ -96,6 +102,7 @@ def hide_menu_footer():
 
 
 def main():
+    init_config()
     hide_menu_footer()
 
     st.title("json encoding and compression")
