@@ -149,7 +149,9 @@ def main():
                 f"you could save ** ${saving_percent * money:0.2f} ({saving_percent*100:0.2f}%)** with **{maxi[0]}** encoding and **{maxi[1]}** compression!"
             )
         else:
-            st.error("unfortunately, none of these algorithm can bring your bandwidth down, your json in already at its lowest!")
+            st.error(
+                "unfortunately, none of these algorithm can bring your bandwidth down, your json in already at its lowest!"
+            )
 
         st.write(
             f"""|json|size|
