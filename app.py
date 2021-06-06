@@ -85,7 +85,19 @@ def compress_with_all(content):
     return data, sizes
 
 
+def hide_menu_footer():
+    hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+
 def main():
+    hide_menu_footer()
+
     st.title("json encoding and compression")
 
     json_str = st.sidebar.text_area(
