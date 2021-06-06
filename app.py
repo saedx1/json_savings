@@ -7,6 +7,8 @@ import brotli
 import codecs
 import streamlit as st
 
+st.set_page_config(layout="wide")
+
 
 def minify_json(content, output_path=None):
     res = json.dumps(content, separators=(",", ":"))
@@ -122,23 +124,23 @@ def main():
             md_str += f"|**{j}**|"
 
             for i in compressed_sizes:
-                size = compressed_sizes[i] * 100 // len(json_bytes)
+                size = compressed_sizes[i] * 100 / len(json_bytes)
                 if maxi[2] > size:
                     maxi = (j, i, size)
-                md_str += f"{compressed_sizes[i]} bytes - **{size}%**|"
+                md_str += f"{compressed_sizes[i]} bytes - **{size:0.2f}%**|"
 
             md_str += "\n"
 
         saving_percent = (100 - maxi[2]) / 100
         st.success(
-            f"you could save ** ${saving_percent * money:0.2f} ({saving_percent*100}%)** with **{maxi[0]}** encoding and **{maxi[1]}** compression!"
+            f"you could save ** ${saving_percent * money:0.2f} ({saving_percent*100:0.2f}%)** with **{maxi[0]}** encoding and **{maxi[1]}** compression!"
         )
 
         st.write(
             f"""|json|size|
         |----|----|
-        |**original**|{len(json_bytes)} bytes - **100%**|
-        |**minified**|{len(json_minified)} bytes - **{len(json_minified) * 100 // len(json_bytes)}%**|
+        |**original**|{len(json_bytes)} bytes - **100.00%**|
+        |**minified**|{len(json_minified)} bytes - **{len(json_minified) * 100 / len(json_bytes):0.2f}%**|
         """
         )
         st.write(f"\n\n")
