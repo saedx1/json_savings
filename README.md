@@ -1,6 +1,9 @@
 # JSON Savings
 JSON Savings is a tool that allows you to calculate potential savings in your cloud bandwidth bill.
 
+## Demo
+- https://json-savings.herokuapp.com/ (it might take a couple seconds to start sometimes; it's hosted for free on heroku).
+
 ## How do we do it?
 We compare joint encoding and compression techniques against each other. We use Python and the python versions of the techniques to perform the calculation. We also use streamlit to put thing neatly into a presentable interface.
 
